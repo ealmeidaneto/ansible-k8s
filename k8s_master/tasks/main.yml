@@ -1,0 +1,46 @@
+---
+# tasks file for k8s_master
+
+- name: Check if kubeadm has already been initialized.
+  stat:
+    path: /etc/kubernetes/admin.conf
+  register: kubernetes_init_stat
+
+- name: Initialize cluster using kubeadm
+  command: >
+    kubeadm init
+    --pod-network-cidr={{ kubernetes_pod_network }}
+    --apiserver-advertise-address={{ ansible_enp0s8.ipv4.address }}
+    --node-name {{ ansible_hostname }}
+  register: kubeadm_init
+  when: not kubernetes_init_stat.stat.exists
+
+- name: Create .kube directory
+  file:
+    path: ~/.kube
+    state: directory
+    mode: 0755
+
+- name: Symlink kubectl admin.conf to ~/.kube/conf
+  file:
+    src: /etc/kubernetes/admin.conf
+    dest: ~/.kube/config
+    state: link
+    mode: 0644
+
+- name: kubeadm join command
+  command: >
+    kubeadm token create --print-join-command
+  register: kubeadm_join
+
+- name: Save kubeadm join output to local file
+  local_action: copy content="{{ kubeadm_join.stdout_lines[0] }}" dest="./kubeadm_join"
+  become: false
+
+- name: Deploy flannel
+  shell: kubectl --kubeconfig ~/.kube/config create -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+  when: network == "flannel"
+
+- name: Deploy Calico
+  shell: kubectl --kubeconfig ~/.kube/config create -f https://docs.projectcalico.org/manifests/calico.yaml
+  when: network == "calico"

@@ -1,0 +1,6 @@
+---
+# handlers file for install_k8s
+- name: Restart containerd
+  systemd:
+    state: restarted
+    name: containerd
