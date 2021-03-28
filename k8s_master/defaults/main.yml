@@ -1,4 +1,2 @@
 ---
 # defaults file for k8s_worker
-network: "flannel"
-kubernetes_pod_network: "192.168.0.0/16"
