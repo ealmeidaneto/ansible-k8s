@@ -1,3 +1,101 @@
 ---
 # tasks file for install_k8s
-- include_tasks: install_packages.yaml
+- name: Update all packages to their latest version
+  apt:
+    name: "*"
+    state: latest
+
+
+- name: Install necessary packages
+  apt:
+    name: "{{ packages }}"
+    state: present
+    update_cache: yes
+- name: Create a directory if it does not exist
+  file:
+    path: /etc/modules-load.d/
+    state: directory
+    mode: '0755'
+
+- name: Copy containerd configuration
+  template:
+    src: templates/containerd.conf.j2
+    dest: /etc/modules-load.d/containerd.conf
+
+- name: Load overlay module
+  modprobe:
+    name: overlay
+    state: present
+
+- name: Load br_netfilter module
+  modprobe:
+    name: br_netfilter
+    state: present
+
+- name: Setup required sysctl params
+  template:
+   src: templates/99-kubernetes-cri.conf.j2
+   dest: /etc/sysctl.d/99-kubernetes-cri.conf
+
+- name: Update sysctl configuration
+  shell: sysctl --system
+
+- name: Install containerd
+  apt:
+    name: containerd
+    state: present
+    update_cache: yes
+
+- name: Create containerd directory
+  file:
+    path: /etc/containerd
+    state: directory
+    mode: 0755
+
+- name: Create containerd default config
+  command: containerd config default
+  changed_when: false
+  register: containerd_default_config
+
+- name: Save containerd default config to config.toml
+  copy:
+    dest: /etc/containerd/config.toml
+    content: "{{ containerd_default_config.stdout }}"
+  notify: Restart containerd
+
+
+- name: Remove swapfile
+  mount:
+    name: "{{ item }}"
+    fstype: swap
+    state: absent
+  with_items:
+    - swap
+    - none
+
+- name: Disable swap
+  shell: swapoff -a
+
+- name: Add Kubernetes key to apt
+  apt_key:
+    url: https://packages.cloud.google.com/apt/doc/apt-key.gpg
+    state: present
+
+- name: Add Kubernetes repo to apt
+  apt_repository:
+    repo: deb https://apt.kubernetes.io/ kubernetes-xenial main
+    state: present
+    filename: kubernetes.list
+
+- name: Pin k8s binaries version
+  template:
+    src: apt-preferences-kubernetes.j2
+    dest: /etc/apt/preferences.d/kubernetes
+    mode: 0644
+
+- name: Install k8s binaries
+  apt:
+    name: "{{ k8s_packages }}"
+    state: present
+
+
