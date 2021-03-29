@@ -1,2 +1,14 @@
 ---
-# defaults file for install_k8s
+packages:
+  - apt-transport-https
+  - ca-certificates
+  - curl
+  - gnupg-agent
+  - software-properties-common
+
+k8s_version: "1.20.4"
+
+k8s_packages:
+  - kubeadm
+  - kubelet
+  - kubectl
