@@ -1,10 +1,16 @@
+- name: Check if kubeadm has already been initialized.
+  stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: kubernetes_init_stat
+
 - name: Copy kubeadm join command to node
   copy:
     src: kubeadm_join
     dest: /tmp/kubeadm_join
     mode: 0777
+  when: not kubernetes_init_stat.stat.exists
 
 - name: Run kubeadm join command
-  shell: >
+  command: >
     sh /tmp/kubeadm_join
-
+  when: not kubernetes_init_stat.stat.exists
