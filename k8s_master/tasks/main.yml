@@ -38,9 +38,13 @@
   become: false
 
 - name: Deploy flannel
-  shell: kubectl --kubeconfig ~/.kube/config create -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+  shell: kubectl --kubeconfig ~/.kube/config apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
+  register: deploy_flannel
+  changed_when: "'created' in deploy_flannel.stdout"
   when: network == "flannel"
 
 - name: Deploy Calico
-  shell: kubectl --kubeconfig ~/.kube/config create -f https://docs.projectcalico.org/manifests/calico.yaml
+  shell: kubectl --kubeconfig ~/.kube/config apply -f https://docs.projectcalico.org/manifests/calico.yaml
+  register: deploy_calico
+  changed_when: "'created' in deploy_calico.stdout"
   when: network == "calico"
